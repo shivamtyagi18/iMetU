@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "998947650221",
+    "firebase_url": "https://imetu-7e0e2.firebaseio.com",
+    "project_id": "imetu-7e0e2",
+    "storage_bucket": "imetu-7e0e2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998947650221:android:6d60ab7e5c84c3c02c2424",
+        "android_client_info": {
+          "package_name": "com.example.imetu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "998947650221-14p1tr29c7hm52213pmsssuj46jgtoo9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsIaRb-TUsfLVEktGbUq-3dR0cKGemZTQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "998947650221-14p1tr29c7hm52213pmsssuj46jgtoo9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
