@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">iMetU</string>
     <string name="title_activity_maps">Map</string>
+    <string name="AlertMessage">Too many people. Not safe to go</string>
 </resources>

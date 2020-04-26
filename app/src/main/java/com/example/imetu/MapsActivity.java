@@ -1,6 +1,7 @@
 package com.example.imetu;
 
 import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -12,6 +13,7 @@ import android.widget.Button;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -33,6 +35,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -47,12 +50,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final String TAG = "MapsActivity";
     private double lat;
     private double lng;
+    private double clat;
+    private double clng;
     private String address;
     private String userid;
+    private double proximity =0;
+
+    private static DecimalFormat df = new DecimalFormat("0.00");
 
     static Boolean flag_stop_sharing_location = true;
-
-
 
 
 
@@ -100,8 +106,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     String format = simpleDateFormat.format(new Date());
 
                 user.put("address", address);
-                user.put("lat", lat);
-                user.put("long", lng);
+                user.put("lat", clat);
+                user.put("long", clng);
                 user.put("timestamp", format);
                 user.put("userid", "default");
 
@@ -150,8 +156,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
                         if (location != null) {
                             address = getCityName(latLng);
-                            lat = latLng.latitude;
-                            lng = latLng.longitude;
+                            clat = latLng.latitude;
+                            clng = latLng.longitude;
                             editText1.setText(address);
 
 
@@ -176,15 +182,38 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                             @Override
                             public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                proximity = 0;
                                 if (task.isSuccessful()) {
                                     for (QueryDocumentSnapshot document : task.getResult()) {
 //                                        System.out.println(document.get("lat"));
                                         Log.d(TAG, document.getId() + " => " + document.getData());
-
+                                        System.out.println(clat);
+                                        System.out.println(clng);
                                         // putting values in neighbours hashmap
                                         get_latlng.put(document.getId(), new double[]{(double) document.get("lat"), (double) document.get("long")} );
 
+                                        // Calculating distance
+                                        proximity = proximity + distance(clat,clng,(double)document.get("lat"),(double)document.get("long"));
+
+                                        System.out.println(proximity);
                                     }
+                                    double avg_proxinity = proximity / get_latlng.size();
+                                    editText_status.setText(String.format("Total %s neighbours with average proximity of %s kilometers", Integer.toString(get_latlng.size()),
+                                            df.format(avg_proxinity)));
+
+                                    if (avg_proxinity > 1 | get_latlng.size() > 10 ){
+                                        AlertDialog alertDialog = new AlertDialog.Builder(MapsActivity.this).create();
+                                        alertDialog.setTitle("Alert");
+                                        alertDialog.setMessage(getString(R.string.AlertMessage));
+                                        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                                                new DialogInterface.OnClickListener() {
+                                                    public void onClick(DialogInterface dialog, int which) {
+                                                        dialog.dismiss();
+                                                    }
+                                                });
+                                        alertDialog.show();
+                                    }
+
 
                                 } else {
                                     Log.w(TAG, "Error getting documents.", task.getException());
@@ -216,7 +245,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setScrollGesturesEnabled(true);
         mMap.isTrafficEnabled();
-        Log.d("mylog", "Complete Address: " + lat);
+        Log.d("mylog", "Complete Address: " + clat);
 
 
         // creating markers for neighbours
@@ -263,6 +292,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         flagLocation=1;
         return myCity;
     }
+
+    private double distance(double lat1, double lon1, double lat2, double lon2) {
+        double theta = lon1 - lon2;
+        double dist = Math.sin(deg2rad(lat1))
+                * Math.sin(deg2rad(lat2))
+                + Math.cos(deg2rad(lat1))
+                * Math.cos(deg2rad(lat2))
+                * Math.cos(deg2rad(theta));
+        dist = Math.acos(dist);
+        dist = rad2deg(dist);
+        dist = dist * 60 * 1.1515;
+        return (dist);
+    }
+
+    private double deg2rad(double deg) {
+        return (deg * Math.PI / 180.0);
+    }
+
+    private double rad2deg(double rad) {
+        return (rad * 180.0 / Math.PI);
+    }
+
 
 }
 
