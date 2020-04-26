@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.SearchView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -21,7 +22,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.firebase.geofire.GeoFire;
-import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -88,7 +88,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     int flagLocation=0;
     EditText editText1;
     EditText editText_status;
-
+    SearchView searchview;
 
     //-----------------------------------------------------------------------------
     //----------------------------------onCreate-----------------------------------
@@ -107,6 +107,44 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         android_id = Settings.Secure.getString(getApplicationContext().getContentResolver(),
                 Settings.Secure.ANDROID_ID);
 
+        searchview = findViewById(R.id.map_search);
+
+        searchview.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                String location = searchview.getQuery().toString();
+
+                if (location != null || !location.equals(" ")){
+
+                    Geocoder geocoder = new Geocoder(MapsActivity.this);
+                    try {
+                        List<Address> addresses = geocoder.getFromLocationName(location, 1);
+                        String address = addresses.get(0).getAddressLine(0);
+                        Log.d("mylog", "Complete Address: " + addresses.toString());
+                        Log.d("mylog", "Address: " + address);
+                        LatLng latlng = new LatLng( addresses.get(0).getLatitude(), addresses.get(0).getLongitude());
+                        clat = latlng.latitude;
+                        clng = latlng.longitude;
+//                        mMap.addMarker(new MarkerOptions().position(latlng).title(location));
+//                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng,15));
+                        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                                .findFragmentById(R.id.map);
+                        assert mapFragment != null;
+                        mapFragment.getMapAsync(MapsActivity.this);
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                return false;
+            }
+        });
 
 
         // GET LOCATION
@@ -145,7 +183,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onClick(View v) {
 
                 flag_stop_sharing_location = false;
-                geoFire.setLocation("firebase-hq", new GeoLocation(37.7853889, -122.4056973));
 
                 if (!flag_stop_sharing_location) {
 
@@ -317,18 +354,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("mylog", "Complete Address: " + clat);
 
 
+        LatLng marker = new LatLng(clat,clng);
+        mMap.addMarker(new MarkerOptions().position(marker).title("Current Location"));
+
         // creating markers for neighbours
         for (Map.Entry<String, double[]> entry : get_latlng.entrySet()) {
 
             LatLng marker_temp = new LatLng(entry.getValue()[0],entry.getValue()[1]);
-            mMap.addMarker(new MarkerOptions().position(marker_temp).title("Marker in Sydney"));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(marker_temp));
+            mMap.addMarker(new MarkerOptions().position(marker_temp).title("Marker"));
+
         }
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(marker,15));
 
         // Draw 500m circle
          mMap.addCircle(new CircleOptions()
                 .center(new LatLng(clat, clng))
-                .radius(1000)
+                .radius(100)
                 .strokeColor(Color.rgb(245,0,0))
                 .fillColor(0x220000FF));
 
