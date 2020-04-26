@@ -7,6 +7,8 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -53,14 +55,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double clat;
     private double clng;
     private String address;
-    private String userid;
     private double proximity =0;
+
+    private int mInterval = 5000; // 5 seconds by default, can be changed later
+    private Handler mHandler;
+
+    private String android_id;
+
 
     private static DecimalFormat df = new DecimalFormat("0.00");
 
     static Boolean flag_stop_sharing_location = true;
 
-
+    final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     // Create a new user with a first and last name
     Map<String, Object> user = new HashMap<>();
@@ -73,8 +80,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     EditText editText_status;
 
 
-
-
+    //-----------------------------------------------------------------------------
+    //----------------------------------onCreate-----------------------------------
+    //-----------------------------------------------------------------------------
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,62 +92,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         editText_status = (EditText) findViewById(R.id.status);
 
+        mHandler = new Handler();
 
+        android_id = Settings.Secure.getString(getApplicationContext().getContentResolver(),
+                Settings.Secure.ANDROID_ID);
 
-        // FIREBASE CONNECTION AND Start sharing Location Data
-
-        final FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-
-        // Add a new document with a generated ID
-        Button button_submit = (Button) findViewById(R.id.start_share_location);
-        button_submit.setOnClickListener(new View.OnClickListener() {
-            @SuppressLint("MissingPermission")
-            @Override
-            public void onClick(View v) {
-
-                flag_stop_sharing_location = false;
-
-                if (!flag_stop_sharing_location) {
-
-                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy-hh-mm-ss");
-                    String format = simpleDateFormat.format(new Date());
-
-                user.put("address", address);
-                user.put("lat", clat);
-                user.put("long", clng);
-                user.put("timestamp", format);
-                user.put("userid", "default");
-
-                db.collection("users")
-                        .add(user)
-                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                            @Override
-                            public void onSuccess(DocumentReference documentReference) {
-                                Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.getId());
-                            }
-                        })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Log.w(TAG, "Error adding document", e);
-                            }
-                        });
-                    } // if flag
-                }
-            });
-
-        // Stop sharing location data
-
-        Button button_stop = (Button) findViewById(R.id.stop_share_location);
-        button_stop.setOnClickListener(new View.OnClickListener() {
-            @SuppressLint("MissingPermission")
-            @Override
-            public void onClick(View v) {
-
-                flag_stop_sharing_location = true;
-            }
-        });
 
 
         // GET LOCATION
@@ -160,7 +117,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             clng = latLng.longitude;
                             editText1.setText(address);
 
-
                         }
 
                     }
@@ -169,7 +125,43 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
 
-        // GET and SHOW NEIGHBOURS
+        //-----------------------------------------------------------------------------
+        // Share Location Add a new document with a generated ID
+        //-----------------------------------------------------------------------------
+        Button button_submit = (Button) findViewById(R.id.start_share_location);
+        button_submit.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void onClick(View v) {
+
+                flag_stop_sharing_location = false;
+
+                if (!flag_stop_sharing_location) {
+
+                    startRepeatingTask(); // To connect Firebase and add location points agter every 5 secs
+
+                    } // if flag
+                }
+            });
+
+        //-----------------------------------------------------------------------------
+        // Stop sharing location data
+        //-----------------------------------------------------------------------------
+        Button button_stop = (Button) findViewById(R.id.stop_share_location);
+        button_stop.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void onClick(View v) {
+
+                flag_stop_sharing_location = true;
+                stopRepeatingTask(); // Stop sharing location
+            }
+        });
+
+
+        //-----------------------------------------------------------------------------
+        // GET / SHOW NEIGHBOURS
+        //-----------------------------------------------------------------------------
         Button button_get_neighbours = (Button) findViewById(R.id.button_get_neighbours);
         button_get_neighbours.setOnClickListener(new View.OnClickListener() {
             @SuppressLint("MissingPermission")
@@ -178,6 +170,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 // GET NEIGHBOURS DATA
                 db.collection("users")
+//                        .whereEqualTo("userid",userid)
                         .get()
                         .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                             @Override
@@ -189,19 +182,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         Log.d(TAG, document.getId() + " => " + document.getData());
                                         System.out.println(clat);
                                         System.out.println(clng);
-                                        // putting values in neighbours hashmap
-                                        get_latlng.put(document.getId(), new double[]{(double) document.get("lat"), (double) document.get("long")} );
 
-                                        // Calculating distance
-                                        proximity = proximity + distance(clat,clng,(double)document.get("lat"),(double)document.get("long"));
+                                        //for other users than current one
+                                        if (!document.get("userid").equals(android_id)){
 
-                                        System.out.println(proximity);
+                                            // putting values in neighbours hashmap
+                                            get_latlng.put(document.getId(), new double[]{(double) document.get("lat"), (double) document.get("long")} );
+
+                                            // Calculating proximity distance
+                                            proximity = proximity + distance(clat,clng,(double)document.get("lat"),(double)document.get("long"));
+
+                                            System.out.println(proximity);
+
+                                        }
+
                                     }
-                                    double avg_proxinity = proximity / get_latlng.size();
-                                    editText_status.setText(String.format("Total %s neighbours with average proximity of %s kilometers", Integer.toString(get_latlng.size()),
-                                            df.format(avg_proxinity)));
 
-                                    if (avg_proxinity > 1 | get_latlng.size() > 10 ){
+                                    double avg_proximity = proximity / get_latlng.size();
+                                    editText_status.setText(String.format("Total %s neighbours with average proximity of %s kilometers", Integer.toString(get_latlng.size()),
+                                            df.format(avg_proximity)));
+
+                                    // Gnerating Alert
+                                    if (avg_proximity < 0.50 | get_latlng.size() > 10 ){
                                         AlertDialog alertDialog = new AlertDialog.Builder(MapsActivity.this).create();
                                         alertDialog.setTitle("Alert");
                                         alertDialog.setMessage(getString(R.string.AlertMessage));
@@ -214,14 +216,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         alertDialog.show();
                                     }
 
-
                                 } else {
                                     Log.w(TAG, "Error getting documents.", task.getException());
                                 }
                             }
                         });
-
-                // SHOW NEIGHBOURS DATA
+                //-----------------------------------------------------------------------------
+                // SHOW NEIGHBOURS DATA ON MAP
+                //-----------------------------------------------------------------------------
 
                 SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                         .findFragmentById(R.id.map);
@@ -232,11 +234,63 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
+        //-----------------------------------------------------------------------------
+
 
     }
 
+    //-----------------------------------------------------------------------------
+    //-----------------------Repeat Task Block-------------------------------------
+    //-----------------------------------------------------------------------------
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        stopRepeatingTask();
+    }
 
-    // Map display
+    Runnable mStatusChecker = new Runnable() {
+        @Override
+        public void run() {
+
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy-hh-mm-ss");
+            String format = simpleDateFormat.format(new Date());
+            System.out.println("Test run");
+            user.put("address", address);
+            user.put("lat", clat);
+            user.put("long", clng);
+            user.put("timestamp", format);
+            user.put("userid", android_id);
+
+            db.collection("users")
+                    .add(user)
+                    .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                        @Override
+                        public void onSuccess(DocumentReference documentReference) {
+                            Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.getId());
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Log.w(TAG, "Error adding document", e);
+                        }
+                    });
+            // Dealy before next repeat
+            mHandler.postDelayed(mStatusChecker, mInterval);
+        }
+    };
+
+    void startRepeatingTask() {
+        mStatusChecker.run();
+    }
+
+    void stopRepeatingTask() {
+        mHandler.removeCallbacks(mStatusChecker);
+    }
+
+    //-----------------------------------------------------------------------------
+    // Map display-----------------------------------------------------------------
+    //-----------------------------------------------------------------------------
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -293,6 +347,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return myCity;
     }
 
+    //-----------------------------------------------------------------------------
+    //-----------Distance Calculation Block----------------------------------------
+    //-----------------------------------------------------------------------------
     private double distance(double lat1, double lon1, double lat2, double lon2) {
         double theta = lon1 - lon2;
         double dist = Math.sin(deg2rad(lat1))
@@ -313,6 +370,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double rad2deg(double rad) {
         return (rad * 180.0 / Math.PI);
     }
+
+    //-------------------------------------------------------------------------
 
 
 }
