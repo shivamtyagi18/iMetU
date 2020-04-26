@@ -3,6 +3,7 @@ package com.example.imetu;
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -19,18 +20,23 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -68,6 +74,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     static Boolean flag_stop_sharing_location = true;
 
     final FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+    DatabaseReference ref = FirebaseDatabase.getInstance().getReference().child("geofire");
+    GeoFire geoFire = new GeoFire(ref);
+
 
     // Create a new user with a first and last name
     Map<String, Object> user = new HashMap<>();
@@ -135,10 +145,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onClick(View v) {
 
                 flag_stop_sharing_location = false;
+                geoFire.setLocation("firebase-hq", new GeoLocation(37.7853889, -122.4056973));
 
                 if (!flag_stop_sharing_location) {
 
                     startRepeatingTask(); // To connect Firebase and add location points agter every 5 secs
+
 
                     } // if flag
                 }
@@ -155,6 +167,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 flag_stop_sharing_location = true;
                 stopRepeatingTask(); // Stop sharing location
+
             }
         });
 
@@ -192,6 +205,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                             // Calculating proximity distance
                                             proximity = proximity + distance(clat,clng,(double)document.get("lat"),(double)document.get("long"));
 
+
                                             System.out.println(proximity);
 
                                         }
@@ -224,6 +238,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //-----------------------------------------------------------------------------
                 // SHOW NEIGHBOURS DATA ON MAP
                 //-----------------------------------------------------------------------------
+
 
                 SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                         .findFragmentById(R.id.map);
@@ -309,6 +324,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             mMap.addMarker(new MarkerOptions().position(marker_temp).title("Marker in Sydney"));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(marker_temp));
         }
+
+        // Draw 500m circle
+         mMap.addCircle(new CircleOptions()
+                .center(new LatLng(clat, clng))
+                .radius(1000)
+                .strokeColor(Color.rgb(245,0,0))
+                .fillColor(0x220000FF));
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
