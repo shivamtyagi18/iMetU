@@ -109,6 +109,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         searchview = findViewById(R.id.map_search);
 
+
+
         searchview.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String s) {
@@ -375,6 +377,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            System.out.println("Permission Check");
+
 
 
             // TODO: Consider calling
