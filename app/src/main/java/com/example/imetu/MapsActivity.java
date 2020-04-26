@@ -116,7 +116,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public boolean onQueryTextSubmit(String s) {
                 String location = searchview.getQuery().toString();
 
-                if (location != null || !location.equals(" ")){
+//                if (location != null || !location.equals(" ")){
 
                     Geocoder geocoder = new Geocoder(MapsActivity.this);
                     try {
@@ -138,7 +138,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         e.printStackTrace();
                     }
 
-                }
+//                }
                 return false;
             }
 
