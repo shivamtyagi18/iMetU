@@ -3,6 +3,13 @@
 On of the biggest challenges that came up in current COVID-19 pandemic is tracking of who came in contact with whom to predict who can be infected. Social distancing has become a must in such times and thus there is need of an app that can tell us when and where it is safe to be. 
 
 We developed iMetU app to solve this problem to some extent by using location data. The app is very easy to use and does not requires any login.
+
+A user can search for a location and then check how many people are there nearby that place and how much is the average distance between them. If the distance is less than  6ft then the app alerts the user that it is not safe to go. Also, the user can check the same for his/her current location.
+
+No login or registration needed, just download and start using. It is that simple. No privacy issues as the user can control when to share his #locationdata  and when to stop by a simple click of a button.
+
+In the pipeline is an admin panel, which can access all the historical data stored by #androidapp in #firebase. This is useful to identify those app users who might have been infected by coming in proximity to an identified infected person. Admin can then send alerts to them to isolate themselves.
+
 Use case scenario:
 
   Larry decides to go for groceries. But he wants to know if the place is crowded.
